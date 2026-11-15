@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#101611" />
+    <title>Las Crónicas de Eldoria</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='.9em' font-size='56'%3E%E2%9C%A6%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="ui">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Eldoria"><span class="brand-mark">✦</span><span>ELDORIA<small>LAS CRÓNICAS</small></span></a>
+        <div class="chapter"><span class="chapter-line"></span><span>CAPÍTULO I <i>·</i> EL VALLE OLVIDADO</span><span class="chapter-line"></span></div>
+        <button id="sound-btn" class="icon-btn" aria-label="Silenciar sonido">♫</button>
+      </header>
+      <aside class="quest-card">
+        <div class="quest-label"><span class="quest-dot"></span> MISIÓN PRINCIPAL</div>
+        <h2>El despertar<br>del <em>Umbral</em></h2>
+        <div class="quest-rule"></div>
+        <div class="quest-progress"><span id="shard-count">0</span><span>/ 3 reliquias</span><span class="progress-track"><i id="progress-fill"></i></span></div>
+        <p id="quest-hint">Recupera las reliquias del valle</p>
+        <div class="quest-direction"><span class="compass">✧</span><span>EL PORTAL</span><span id="portal-distance">—</span></div>
+      </aside>
+      <div class="location"><span class="location-icon">⌖</span><span><b>VALLE DE LAS CENIZAS</b><small>FRONTERA DE ELDORIA</small></span></div>
+      <div class="boss-warning" id="boss-warning"><span>✦</span> EL GUARDIÁN TE HA ENCONTRADO <span>✦</span></div>
+      <div class="vignette"></div>
+      <div class="damage-flash" id="damage-flash"></div>
+      <div class="hud-bottom">
+        <div class="player-status">
+          <div class="avatar">✦</div>
+          <div class="status-bars">
+            <div class="status-name"><span>VIAJERO</span><span id="level-label">NIV. 01</span></div>
+            <div class="bar hp"><span class="bar-icon">♥</span><div class="bar-track"><i id="health-fill"></i></div><b id="health-text">100</b></div>
+            <div class="bar mana"><span class="bar-icon">✧</span><div class="bar-track"><i></i></div><b>∞</b></div>
+          </div>
+        </div>
+        <div class="action-hint"><kbd>ESPACIO</kbd> o <kbd>CLIC</kbd> <span>ATACAR</span></div>
+        <div class="hotbar">
+          <button class="skill active" id="attack-btn" aria-label="Atacar"><span class="skill-key">Q</span><span class="skill-symbol">⚔</span><small>GOLPE</small></button>
+          <button class="skill" id="dash-btn" aria-label="Esquivar"><span class="skill-key">E</span><span class="skill-symbol">➤</span><small>IMPULSO</small></button>
+          <button class="skill" id="potion-btn" aria-label="Poción"><span class="skill-key">R</span><span class="skill-symbol">♜</span><small id="potion-count">POCIÓN ×2</small></button>
+        </div>
+        <div class="minimap"><div class="map-ring"><div class="map-player"></div><div class="map-portal">✧</div><div class="map-dot d1"></div><div class="map-dot d2"></div></div><span>VALLE</span></div>
+      </div>
+      <div class="mobile-controls" id="mobile-controls">
+        <div class="joystick" id="joystick"><div class="joy-knob" id="joy-knob"></div></div>
+        <button class="mobile-attack" id="mobile-attack">⚔</button>
+        <button class="mobile-dash" id="mobile-dash">➤</button>
+      </div>
+      <div class="toast" id="toast"></div>
+      <div class="overlay" id="intro">
+        <div class="intro-backdrop"></div>
+        <div class="intro-content">
+          <div class="eyebrow"><span></span> UNA AVENTURA DE ELDORIA <span></span></div>
+          <div class="title-flourish">✦</div>
+          <h1>LAS CRÓNICAS<br><span>DE ELDORIA</span></h1>
+          <p class="intro-copy">Cuando la última estrella se apagó,<br>el Umbral despertó bajo las cenizas.</p>
+          <button class="begin-btn" id="begin-btn"><span>COMENZAR AVENTURA</span><b>→</b></button>
+          <div class="controls-note"><span>W A S D</span> MOVER <i>·</i> <span>ESPACIO</span> ATACAR <i>·</i> <span>SHIFT</span> IMPULSO</div>
+        </div>
+        <div class="intro-footer"><span>CAPÍTULO I · EL VALLE OLVIDADO</span><span>★ &nbsp; UN MUNDO POR DESCUBRIR</span></div>
+      </div>
+      <div class="overlay end-overlay hidden" id="end-overlay"><div class="intro-content"><div class="title-flourish">✧</div><div class="eyebrow">EL UMBRAL HA SIDO SELLADO</div><h1 id="end-title">EL VALLE<br><span>ES LIBRE</span></h1><p class="intro-copy" id="end-copy">Las estrellas vuelven a brillar sobre Eldoria.</p><button class="begin-btn" id="restart-btn"><span>VOLVER A JUGAR</span><b>↻</b></button></div></div>
+      <div class="pause-overlay hidden" id="pause-overlay"><div class="pause-card"><span class="pause-mark">Ⅱ</span><h2>AVENTURA EN PAUSA</h2><p>El valle espera tu regreso.</p><button id="resume-btn" class="begin-btn"><span>CONTINUAR</span><b>→</b></button></div></div>
+      <div class="mobile-tip" id="mobile-tip">DESLIZA PARA MOVER · TOCA ⚔ PARA ATACAR</div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

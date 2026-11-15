@@ -1,18 +1,25 @@
-# PlayGround
+# Las Crónicas de Eldoria
 
-<!-- omgithub:readme:start -->
-## 🚀 Build, play, and remix with OMGithub
+Una aventura RPG 3D de fantasía épica para navegador, construida con Three.js.
 
-**Created using [OMGithub.com](https://go.ondev.store/).**
+## Jugar
 
-[![OMGithub](https://img.shields.io/badge/OMGithub-Open%20project-orange?style=for-the-badge)](https://go.ondev.store/salgueroemanuel1-cyber/PlayGround)
-[![GitHub](https://img.shields.io/badge/GitHub-Source-181717?logo=github&style=for-the-badge)](https://github.com/salgueroemanuel1-cyber/PlayGround)
+```bash
+npm install
+npm run start
+```
 
-- 🎮 [Open the project](https://go.ondev.store/salgueroemanuel1-cyber/PlayGround).
-- ✨ [Remix this project](https://go.ondev.store/salgueroemanuel1-cyber/PlayGround?remix=1).
-- 💻 [Explore the source](https://github.com/salgueroemanuel1-cyber/PlayGround).
-- 🛠️ [Check build runs](https://github.com/salgueroemanuel1-cyber/PlayGround/actions).
-- 🐛 [Report an issue](https://github.com/salgueroemanuel1-cyber/PlayGround/issues).
-- 👤 [Explore the creator's projects](https://go.ondev.store/salgueroemanuel1-cyber).
-- 🌍 [Create with OMGithub](https://go.ondev.store/).
-<!-- omgithub:readme:end -->
+Abre [http://localhost:3002](http://localhost:3002). También puedes ejecutar `./start.sh` en el entorno OMGithub.
+
+## La aventura
+
+El Umbral ha despertado bajo las cenizas del valle. Reúne las tres reliquias ancestrales, derrota al Guardián y regresa al portal para sellarlo.
+
+- **WASD / flechas:** moverse.
+- **Espacio / clic / Q:** atacar a los espectros cercanos.
+- **Mayús / E:** impulsarse y esquivar.
+- **R:** consumir una poción curativa.
+- **Esc:** pausar o continuar.
+- En móviles, usa el joystick y los botones de ataque e impulso.
+
+El audio de los efectos se genera localmente en el navegador; el botón de nota musical permite silenciarlo.
