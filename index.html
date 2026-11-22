@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Óxido Austral — Prototipo 1</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#171512;font-family:Arial,sans-serif;color:#eee}canvas{display:block;width:100%;height:100%;cursor:crosshair}.hud{position:absolute;inset:0;pointer-events:none}.top{position:absolute;left:18px;right:18px;top:12px;height:58px;display:flex;justify-content:space-between}.brand{font-weight:900;letter-spacing:3px;font-size:18px;text-shadow:2px 2px #000}.brand small{display:block;color:#d99a5a;font-size:9px;letter-spacing:5px}.stats{display:flex;gap:8px}.stat{height:48px;min-width:96px;padding:8px 12px;background:rgba(25,23,20,.88);border:1px solid #725d45;border-radius:3px;font-weight:bold}.stat b{color:#e6c27a}.minimap{position:absolute;right:18px;bottom:18px;width:190px;height:112px;border:2px solid #91806b;background:rgba(28,25,21,.94);pointer-events:auto}.panel{position:absolute;left:18px;bottom:18px;width:290px;height:112px;background:rgba(25,23,20,.92);border:1px solid #725d45;padding:10px}.panel h3{margin:0 0 7px;font-size:13px;color:#e8c58c}.panel p{margin:4px 0;font-size:12px;color:#bbb}.actions{position:absolute;left:318px;bottom:18px;display:flex;gap:7px}.btn{pointer-events:auto;border:1px solid #816b50;background:#34302a;color:#eee;width:62px;height:62px;border-radius:3px;font-weight:bold;cursor:pointer}.btn:hover{background:#514637;border-color:#c39861}.alert{position:absolute;top:78px;left:50%;transform:translateX(-50%) scale(.9);background:#8d3028;padding:9px 16px;border:1px solid #e8a27a;opacity:0;transition:.2s}.alert.show{opacity:1;transform:translateX(-50%) scale(1)}.help{position:absolute;right:18px;top:80px;text-align:right;font-size:11px;color:#baa}.pause{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:none;text-align:center;background:rgba(20,18,16,.94);border:1px solid #9d815d;padding:28px 50px}.pause.show{display:block}
+@media(max-width:700px){.panel{width:220px}.actions{left:248px}.minimap{width:150px}.stat{min-width:78px}.help{display:none}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="hud">
+  <div class="top"><div class="brand">ÓXIDO AUSTRAL<small>MESETA 2099</small></div><div class="stats"><div class="stat">Petróleo <b id="oil">420</b></div><div class="stat">Chatarra <b id="scrap">80</b></div><div class="stat">Pob. <b id="pop">4 / 20</b></div></div></div>
+  <div class="alert" id="alert">¡BASE BAJO ATAQUE!</div>
+  <div class="help">Clic izq. seleccionar · Clic der. mover/atacar<br>Arrastrar selección · Doble clic tipo · A ataque<br>Espacio cámara · 1-5 grupos · P pausa</div>
+  <div class="panel"><h3 id="name">UNIDADES</h3><div id="details"><p>Seleccioná una unidad.</p></div></div>
+  <div class="actions"><button class="btn" id="move">Mover</button><button class="btn" id="attack">Atacar</button><button class="btn" id="stop">Detener</button></div>
+  <canvas class="minimap" id="mini" width="190" height="112"></canvas>
+  <div class="pause" id="pause"><h2>PAUSA</h2><p>P para continuar</p></div>
+</div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),mini=document.getElementById('mini'),mctx=mini.getContext('2d');
+let W,H,DPR=1,camera={x:0,y:0,zoom:1},paused=false,drag=null,mouse={x:0,y:0,down:false,button:0},attackMode=false,lastAlert=0,scrapCount=80,controlGroups={};
+const world={w:38,h:38,tw:64,th:32};
+const units=[],rocks=[],scraps=[];
+function rnd(n){return Math.sin(n*12.9898)*43758.5453%1}
+function terrain(x,y){let n=Math.abs(rnd(x*91+y*37));return n>.82?'rock':n>.76?'road':n>.68?'scrub':'sand'}
+function iso(x,y){return {x:(x-y)*world.tw/2*camera.zoom-W/2+(W/2+camera.x),y:(x+y)*world.th/2*camera.zoom-110+(H/2-camera.y)}}
+function worldFromScreen(sx,sy){let z=camera.zoom,dx=(sx-(W/2+camera.x))/z,dy=(sy-(H/2-camera.y))/z;dy+=110/z;let x=(dy/(world.th/2)+dx/(world.tw/2))/2,y=(dy/(world.th/2)-dx/(world.tw/2))/2;return{x,y}}
+function makeUnit(x,y,team,type='Tirador'){units.push({x,y,team,type,hp:team==='player'?100:85,max:team==='player'?100:85,selected:false,tx:x,ty:y,fire:0,order:null,angle:0,veteran:0})}
+for(let i=0;i<5;i++)makeUnit(11+(i%3)*.8,12+Math.floor(i/3)*.8,'player',i===4?'Cisterna':'Tirador');
+for(let i=0;i<5;i++)makeUnit(27+(i%3)*.8,24+Math.floor(i/3)*.8,'enemy',i===4?'Piche':'Mútil');
+for(let i=0;i<30;i++)rocks.push({x:2+Math.random()*34,y:2+Math.random()*34,s:.55+Math.random()*.7});
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}addEventListener('resize',resize);resize();
+function selected(){return units.filter(u=>u.selected)}
+function diamond(ctx,x,y,w,h,fill,stroke){ctx.beginPath();ctx.moveTo(x,y-h/2);ctx.lineTo(x+w/2,y);ctx.lineTo(x,y+h/2);ctx.lineTo(x-w/2,y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke()}}
+function draw(){
+ctx.clearRect(0,0,W,H);let sky=ctx.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#84a89d');sky.addColorStop(.55,'#a7a177');sky.addColorStop(1,'#b16f43');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ctx.fillStyle='rgba(237,194,120,.18)';ctx.fillRect(0,0,W,100);
+// wind turbines in distance
+for(let i=0;i<4;i++){let x=100+i*260+camera.x*.05,y=110+(i%2)*28;ctx.strokeStyle='#5c5a50';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+55);ctx.stroke();ctx.beginPath();ctx.arc(x,y,9,0,7);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+22,y-5);ctx.moveTo(x,y);ctx.lineTo(x-8,y-18);ctx.moveTo(x,y);ctx.lineTo(x-14,y+15);ctx.stroke()}
+for(let y=0;y<world.h;y++){for(let x=0;x<world.w;x++){let p=iso(x,y),t=terrain(x,y);let col=t==='road'?'#8c7957':t==='rock'?'#6f6858':t==='scrub'?'#8c7849':'#ad9560';diamond(ctx,p.x,p.y,world.tw*camera.zoom,world.th*camera.zoom,col,'rgba(65,55,40,.18)')}}
+for(let r of rocks){let p=iso(r.x,r.y);ctx.fillStyle='#5f5b50';ctx.beginPath();ctx.ellipse(p.x,p.y,p.x?10*r.s:10,5*r.s,0,0,7);ctx.fill();ctx.fillStyle='#77705d';ctx.beginPath();ctx.ellipse(p.x-3*r.s,p.y-4*r.s,7*r.s,4*r.s,0,0,7);ctx.fill()}
+for(let s of scraps){let p=iso(s.x,s.y);ctx.fillStyle='#d3b568';ctx.fillRect(p.x-5,p.y-3,10,6);ctx.fillStyle='#ede0a4';ctx.fillRect(p.x-2,p.y-5,4,3)}
+// bases
+for(let b of [{x:9,y:13,team:'player'},{x:29,y:25,team:'enemy'}]){let p=iso(b.x,b.y);ctx.fillStyle=b.team==='player'?'#b86b36':'#6f3c45';ctx.fillRect(p.x-24,p.y-12,48,24);ctx.fillStyle='#302e29';ctx.fillRect(p.x-30,p.y-29,60,18);ctx.fillStyle=b.team==='player'?'#d5a052':'#b55e65';ctx.fillRect(p.x-18,p.y-34,36,5)}
+let sorted=[...units].sort((a,b)=>(a.x+a.y)-(b.x+b.y));
+for(let u of sorted){if(u.hp<=0)continue;let p=iso(u.x,u.y);ctx.save();ctx.translate(p.x,p.y);ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,6,13,5,0,0,7);ctx.fill();ctx.fillStyle=u.team==='player'?'#d9a33c':u.team==='enemy'?'#9e5360':'#777';ctx.beginPath();ctx.arc(0,-8,8,0,7);ctx.fill();ctx.fillStyle=u.team==='player'?'#5e9bb1':'#6c3d43';ctx.fillRect(-9,-5,18,10);ctx.fillStyle='#312e29';ctx.fillRect(-10,3,20,4);if(u.selected){ctx.strokeStyle='#e8e0af';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,7,16,7,0,0,7);ctx.stroke()}if(u.team==='enemy'||u.hp<u.max){ctx.fillStyle='#222';ctx.fillRect(-12,-24,24,3);ctx.fillStyle=u.team==='enemy'?'#c75b55':'#72a46b';ctx.fillRect(-12,-24,24*u.hp/u.max,3)}ctx.restore()}
+if(drag){ctx.strokeStyle='#eee';ctx.setLineDash([5,4]);ctx.strokeRect(drag.x0,drag.y0,drag.x-drag.x0,drag.y-drag.y0);ctx.setLineDash([])}
+mctx.fillStyle='#594d3b';mctx.fillRect(0,0,190,112);for(let y=0;y<world.h;y++)for(let x=0;x<world.w;x++){let t=terrain(x,y);if(t==='road'){mctx.fillStyle='#9b895d';mctx.fillRect(x*5,y*3,5,3)}}for(let u of units){if(u.hp<=0)continue;mctx.fillStyle=u.team==='player'?'#e4b54e':'#c65d62';mctx.fillRect(u.x/world.w*190-2,u.y/world.h*112-2,4,4)}
+requestAnimationFrame(draw)}
+function moveSelected(x,y){let sel=selected();sel.forEach((u,i)=>{let spread=((i%3)-1)*.55;u.tx=x+spread;u.ty=y+(Math.floor(i/3)-.5)*.55;u.order='move'})}
+function update(dt){if(paused)return;
+ for(let u of units){if(u.hp<=0)continue;let dx=u.tx-u.x,dy=u.ty-u.y,d=Math.hypot(dx,dy);if(d>.08){u.x+=dx/d*Math.min(d,dt*.001*1.8);u.y+=dy/d*Math.min(d,dt*.001*1.8)}if(u.fire>0)u.fire-=dt;
+ if(u.team==='player'){let target=units.find(v=>v.team==='enemy'&&v.hp>0&&Math.hypot(v.x-u.x,v.y-u.y)<3.4);if(target&&u.fire<=0){target.hp-=9;u.fire=850;if(target.hp<=0){scraps.push({x:target.x,y:target.y,life:1,amount:20});alert('MUTANTE AVERIADO')}}}else{let target=units.find(v=>v.team==='player'&&v.hp>0&&Math.hypot(v.x-u.x,v.y-u.y)<3);if(target&&u.fire<=0){target.hp-=6;u.fire=1000;if(target.hp<=0)alert('¡BASE BAJO ATAQUE!')}}}
+for(let s of scraps){let nearest=units.find(u=>u.team==='player'&&u.hp>0&&Math.hypot(u.x-s.x,u.y-s.y)<1.2);if(nearest){scrapCount+=s.amount;s.life=-1;document.getElementById('scrap').textContent=scrapCount}}
+for(let i=scraps.length-1;i>=0;i--)if(scraps[i].life<0)scraps.splice(i,1)
+}
+let prev=performance.now();function loop(t){update(t-prev);prev=t;requestAnimationFrame(loop)}requestAnimationFrame(loop);loop(performance.now());
+function alert(text){let e=document.getElementById('alert');e.textContent=text;e.classList.add('show');clearTimeout(lastAlert);lastAlert=setTimeout(()=>e.classList.remove('show'),1600)}
+function refreshPanel(){let s=selected();document.getElementById('details').innerHTML=s.length?`<p><b>${s.length}</b> unidad(es) seleccionada(s)</p><p>Vida: ${Math.round(s[0].hp)} / ${s[0].max}</p><p>Tipo: ${s[0].team==='player'?'Petrolero':'Bestial'}</p>`:'<p>Seleccioná una unidad.</p>';document.getElementById('name').textContent=s.length?s.length===1?s[0].type:'ESCUADRÓN':'UNIDADES'}
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);mouse.down=true;mouse.button=e.button;mouse.x=e.clientX;mouse.y=e.clientY;if(e.button===0&&!e.shiftKey){drag={x0:e.clientX,y0:e.clientY,x:e.clientX,y:e.clientY}}});
+canvas.addEventListener('pointermove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;if(drag){drag.x=e.clientX;drag.y=e.clientY}});
+canvas.addEventListener('pointerup',e=>{mouse.down=false;if(e.button===2){let w=worldFromScreen(e.clientX,e.clientY);let enemy=units.find(u=>u.team==='enemy'&&u.hp>0&&Math.hypot(u.x-w.x,u.y-w.y)<1.1);if(enemy&&selected().length){selected().forEach(u=>{u.tx=enemy.x;u.ty=enemy.y;u.order='attack'})}else moveSelected(w.x,w.y);refreshPanel();return}if(drag){let dx=drag.x-drag.x0,dy=drag.y-drag.y0;if(Math.hypot(dx,dy)<5){let w=worldFromScreen(e.clientX,e.clientY);let u=units.find(v=>v.hp>0&&Math.hypot(v.x-w.x,v.y-w.y)<.9);if(!e.shiftKey)units.forEach(v=>v.selected=false);if(u&&u.team==='player')u.selected=true}else{let x1=Math.min(drag.x0,drag.x),x2=Math.max(drag.x0,drag.x),y1=Math.min(drag.y0,drag.y),y2=Math.max(drag.y0,drag.y);if(!e.shiftKey)units.forEach(u=>u.selected=false);for(let u of units){let p=iso(u.x,u.y);if(p.x>=x1&&p.x<=x2&&p.y>=y1&&p.y<=y2&&u.team==='player')u.selected=true}}drag=null;refreshPanel()}});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('dblclick',e=>{let w=worldFromScreen(e.clientX,e.clientY);let u=units.find(v=>v.team==='player'&&Math.hypot(v.x-w.x,v.y-w.y)<1);if(u){units.forEach(v=>v.selected=v.team==='player'&&v.type===u.type);refreshPanel()}});
+addEventListener('wheel',e=>{camera.zoom=Math.max(.65,Math.min(1.7,camera.zoom*(e.deltaY>0?.9:1.1)))});
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(e.key===' '){camera.x=0;camera.y=0}if(k==='p'){paused=!paused;document.getElementById('pause').classList.toggle('show',paused)}if(k==='a')attackMode=!attackMode;if(k==='x')selected().forEach(u=>{u.tx=u.x;u.ty=u.y});if(['arrowup','w'].includes(k))camera.y+=36;if(['arrowdown','s'].includes(k))camera.y-=36;if(['arrowleft','a'].includes(k)&&e.key!=='a')camera.x+=36;if(['arrowright','d'].includes(k))camera.x-=36;if(e.ctrlKey&&'12345'.includes(e.key))controlGroups[e.key]=selected().slice();else if('12345'.includes(e.key)&&controlGroups[e.key]){units.forEach(u=>u.selected=controlGroups[e.key].includes(u)&&u.hp>0);refreshPanel()}});
+document.getElementById('move').onclick=()=>attackMode=false;document.getElementById('attack').onclick=()=>{attackMode=true;alert('Modo atacar: clic derecho sobre objetivo')};document.getElementById('stop').onclick=()=>selected().forEach(u=>{u.tx=u.x;u.ty=u.y});
+setInterval(()=>{document.getElementById('pop').textContent=4+' / 20';let player=units.filter(u=>u.team==='player');document.getElementById('oil').textContent=420+Math.floor(player.length*2)},1000);
+})();
+</script>
+</body></html>
